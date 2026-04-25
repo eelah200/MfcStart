@@ -80,6 +80,9 @@ BEGIN_MESSAGE_MAP(CMfcStartDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_EN_CHANGE(IDC_EDIT_EDGE, &CMfcStartDlg::OnEnChangeEditEdge)
 	ON_WM_LBUTTONDOWN()
+	ON_WM_MOUSEMOVE() 
+	ON_WM_LBUTTONUP()
+	ON_BN_CLICKED(IDC_BTN_INIT, &CMfcStartDlg::OnBnClickedBtnReset)
 END_MESSAGE_MAP()
 
 
@@ -301,66 +304,51 @@ void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 
 		// --- 여기서부터 3단계 핵심 로직 시작 ---
 
-		// 3-1. 이미 점 3개를 다 찍었다면 더 이상 무시
-		if (m_clickCount >= 3) return;
+		if (m_clickCount < 3)
+		{
+			// [1] 점 좌표 저장
+			m_points[m_clickCount] = imgPoint;
 
-		// 3-2. "보정된" 좌표를 배열에 저장
-		m_points[m_clickCount] = imgPoint;
+			// [2] 현재 찍힌 점의 순서에 맞춰서 글자 업데이트
+			CString str;
+			str.Format(_T("점%d(%d, %d)"), m_clickCount + 1, imgPoint.x, imgPoint.y);
 
-		// 3-3. 클릭한 위치에 눈에 잘 띄게 검은색 정원 점 찍기 (피드백)
-		int pointRadius = 7; // 점의 크기 조절
-		for (int y = -pointRadius; y <= pointRadius; y++) {
-			for (int x = -pointRadius; x <= pointRadius; x++) {
-				// 원의 방정식 (x^2 + y^2 <= r^2)을 이용해 내부를 채웁니다.
-				if (x * x + y * y <= pointRadius * pointRadius) {
-					int drawX = imgPoint.x + x;
-					int drawY = imgPoint.y + y;
+			if (m_clickCount == 0)      SetDlgItemText(IDC_POINT_1, str);
+			else if (m_clickCount == 1) SetDlgItemText(IDC_POINT_2, str);
+			else if (m_clickCount == 2) SetDlgItemText(IDC_POINT_3, str);
 
-					// 캔버스 범위를 벗어나지 않을 때만 그리기
-					if (drawX >= 0 && drawX < m_canvas.GetWidth() &&
-						drawY >= 0 && drawY < m_canvas.GetHeight()) {
-						m_canvas.SetPixel(drawX, drawY, RGB(0, 0, 0)); // 검은색 점
-					}
+			// [3] 점 그리기
+			DrawPoint(imgPoint);
+
+			// [4] 점 개수 증가 (이 위치가 제일 중요합니다!)
+			m_clickCount++;
+
+			// [5] 방금 찍은 게 3번째 점이라면 바로 원 그리기
+			if (m_clickCount == 3) {
+				double cx, cy, r;
+				if (CalculateCircle(m_points[0], m_points[1], m_points[2], cx, cy, r)) {
+					DrawCustomCircle(cx, cy, r, m_nThickness);
+				}
+				else {
+					AfxMessageBox(_T("세 점이 일직선이라 원을 그릴 수 없습니다. 다시 시도해주세요."));
+					m_clickCount = 2; // 일직선이면 다시 세 번째 점을 찍을 수 있게 되돌림
 				}
 			}
 		}
+		else
+		{
+			// [6] 이미 점이 3개인 상태 -> 드래그할 점이 있는지 검사
+			for (int i = 0; i < 3; i++) {
+				double dx = imgPoint.x - m_points[i].x;
+				double dy = imgPoint.y - m_points[i].y;
+				double dist = sqrt(dx * dx + dy * dy);
 
-		// 3-4. 점 개수 1 증가
-		m_clickCount++;
-
-		// 3-5. 점이 3개가 되었을 때 엔진(2단계) 가동!
-		if (m_clickCount == 3) {
-			double cx, cy, r;
-
-			// 세 점으로 외심과 반지름 계산
-			if (CalculateCircle(m_points[0], m_points[1], m_points[2], cx, cy, r)) {
-				// 정원 그리기 호출
-				DrawCustomCircle(cx, cy, r, m_nThickness);
+				// 마우스 클릭 위치가 점의 중심에서 15픽셀 이내라면 "잡았다!"
+				if (dist <= 15.0) {
+					m_dragIndex = i;
+					break;
+				}
 			}
-			else {
-				AfxMessageBox(_T("세 점이 일직선이라 원을 그릴 수 없습니다. 다시 시도해주세요."));
-			}
-		}
-
-		// 점1 좌표위치
-		if (m_clickCount == 1) {
-			CString str;
-			str.Format(_T("점1(%d, %d)"), imgPoint.x, imgPoint.y);
-			SetDlgItemText(IDC_POINT_1, str); 
-		}
-
-		// 점2 좌표위치
-		if (m_clickCount == 2) {
-			CString str;
-			str.Format(_T("점2(%d, %d)"), imgPoint.x, imgPoint.y);
-			SetDlgItemText(IDC_POINT_2, str);
-		}
-
-		//점3 좌표위치
-		if (m_clickCount == 3) {
-			CString str;
-			str.Format(_T("점3(%d, %d)"), imgPoint.x, imgPoint.y);
-			SetDlgItemText(IDC_POINT_3, str);
 		}
 
 		// 화면 갱신 (OnPaint 호출)
@@ -370,3 +358,98 @@ void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
 
+void CMfcStartDlg::DrawPoint(CPoint p)
+{
+	// 3-3. 클릭한 위치에 눈에 잘 띄게 검은색 정원 점 찍기 (피드백)
+	int pointRadius = 7; // 점의 크기 조절
+	for (int y = -pointRadius; y <= pointRadius; y++) {
+		for (int x = -pointRadius; x <= pointRadius; x++) {
+			// 원의 방정식 (x^2 + y^2 <= r^2)을 이용해 내부를 채웁니다.
+			if (x * x + y * y <= pointRadius * pointRadius) {
+				int drawX = p.x + x;
+				int drawY = p.y + y;
+
+				// 캔버스 범위를 벗어나지 않을 때만 그리기
+				if (drawX >= 0 && drawX < m_canvas.GetWidth() &&
+					drawY >= 0 && drawY < m_canvas.GetHeight()) {
+					m_canvas.SetPixel(drawX, drawY, RGB(0, 0, 0)); // 검은색 점
+				}
+			}
+		}
+	}
+}
+
+void CMfcStartDlg::OnMouseMove(UINT nFlags, CPoint point)
+{
+	if (m_dragIndex != -1 && (nFlags & MK_LBUTTON)) {
+		// 1. 좌표 보정
+		CRect rect;
+		GetDlgItem(IDC_CANVAS)->GetWindowRect(&rect);
+		ScreenToClient(&rect);
+
+		CPoint imgPoint;
+		imgPoint.x = point.x - rect.left;
+		imgPoint.y = point.y - rect.top;
+
+		// 2. 잡고 있는 점의 좌표 업데이트
+		m_points[m_dragIndex] = imgPoint;
+
+		// 3. 캔버스 초기화 (이전 그림 지우기)
+		HDC hdc = m_canvas.GetDC();
+		::PatBlt(hdc, 0, 0, rect.Width(), rect.Height(), WHITENESS);
+		m_canvas.ReleaseDC();
+
+		// 4. 세 점 및 원 다시 그리기
+		for (int i = 0; i < 3; i++) {
+			// (점 그리는 함수 혹은 로직 호출)
+			DrawPoint(m_points[i]);
+		}
+
+		double cx, cy, r;
+		if (CalculateCircle(m_points[0], m_points[1], m_points[2], cx, cy, r)) {
+			DrawCustomCircle(cx, cy, r, m_nThickness);
+		}
+
+		// 5. 화면 갱신
+		Invalidate();
+	}
+	CDialogEx::OnMouseMove(nFlags, point);
+}
+
+void CMfcStartDlg::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	m_dragIndex = -1; // 드래그 종료
+	CDialogEx::OnLButtonUp(nFlags, point);
+}
+
+void CMfcStartDlg::OnBnClickedBtnReset()
+{
+	// 1. 클릭 상태 및 좌표 배열 초기화
+	m_clickCount = 0;
+	m_dragIndex = -1;
+	for (int i = 0; i < 3; i++) {
+		m_points[i] = CPoint(0, 0);
+	}
+
+	// 2. 랜덤 이동 스레드 상태 초기화 (다음 5단계를 위한 대비)
+	m_isThreadRunning = false;
+
+	// 3. 화면 상단의 좌표 텍스트 초기화
+	SetDlgItemText(IDC_POINT_1, _T("점1(0, 0)"));
+	SetDlgItemText(IDC_POINT_2, _T("점2(0, 0)"));
+	SetDlgItemText(IDC_POINT_3, _T("점3(0, 0)"));
+
+	// 4. 도화지(m_canvas)를 깨끗한 흰색으로 지우기
+	if (!m_canvas.IsNull()) {
+		CRect rect;
+		GetDlgItem(IDC_CANVAS)->GetWindowRect(&rect);
+
+		HDC hdc = m_canvas.GetDC();
+		// PatBlt 함수와 WHITENESS 옵션을 사용해 도화지 전체를 흰색으로 덮습니다.
+		::PatBlt(hdc, 0, 0, rect.Width(), rect.Height(), WHITENESS);
+		m_canvas.ReleaseDC();
+	}
+
+	// 5. 화면 새로고침 (지워진 도화지를 모니터에 반영)
+	Invalidate();
+}

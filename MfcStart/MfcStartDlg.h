@@ -49,7 +49,11 @@ public:
 		int x, int y, 
 		double cx, double cy, double r, int thickness); // bool 판별함수
 
-	CImage m_canvas;
+	CImage m_canvas; //원을 그리는 기본적 변수
 
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void DrawPoint(CPoint p);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnBnClickedBtnReset();
 };
