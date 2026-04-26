@@ -83,6 +83,8 @@ BEGIN_MESSAGE_MAP(CMfcStartDlg, CDialogEx)
 	ON_WM_MOUSEMOVE() 
 	ON_WM_LBUTTONUP()
 	ON_BN_CLICKED(IDC_BTN_INIT, &CMfcStartDlg::OnBnClickedBtnReset)
+	ON_MESSAGE(WM_UPDATE_RANDOM, &CMfcStartDlg::OnUpdateRandom)
+	ON_BN_CLICKED(IDC_BTN_RANDOM, &CMfcStartDlg::OnBnClickedBtnRandom)
 END_MESSAGE_MAP()
 
 
@@ -289,6 +291,8 @@ void CMfcStartDlg::DrawCustomCircle(double cx, double cy, double r, int thicknes
 
 void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 {
+	if (m_isThreadRunning) return;
+
 	// 1. IDC_CANVAS 영역의 위치 구하기
 	CRect rect;
 	GetDlgItem(IDC_CANVAS)->GetWindowRect(&rect);
@@ -452,4 +456,62 @@ void CMfcStartDlg::OnBnClickedBtnReset()
 
 	// 5. 화면 새로고침 (지워진 도화지를 모니터에 반영)
 	Invalidate();
+}
+
+UINT ThreadRandomMove(LPVOID pParam)
+{
+	CMfcStartDlg* pDlg = (CMfcStartDlg*)pParam;
+	CRect rect;
+	pDlg->GetDlgItem(IDC_CANVAS)->GetClientRect(&rect);
+
+	for (int i = 0; i < 10; i++) // 10회 반복
+	{
+		if (!pDlg->m_isThreadRunning) break; // 중단 플래그 체크
+
+		// 랜덤 좌표 생성 (캔버스 크기 내)
+		for (int j = 0; j < 3; j++) {
+			pDlg->m_points[j].x = rand() % rect.Width();
+			pDlg->m_points[j].y = rand() % rect.Height();
+		}
+
+		// UI 스레드에 알림 전송 (PostMessage는 비동기라 스레드가 멈추지 않음)
+		pDlg->PostMessage(WM_UPDATE_RANDOM);
+
+		Sleep(500); // 0.5초 대기 (초당 2회)
+	}
+
+	pDlg->m_isThreadRunning = false;
+	return 0;
+}
+
+afx_msg LRESULT CMfcStartDlg::OnUpdateRandom(WPARAM wParam, LPARAM lParam)
+{
+	// 1. 도화지 지우기
+	CRect rect;
+	GetDlgItem(IDC_CANVAS)->GetWindowRect(&rect);
+	ScreenToClient(&rect);
+
+	HDC hdc = m_canvas.GetDC();
+	::PatBlt(hdc, 0, 0, rect.Width(), rect.Height(), WHITENESS);
+	m_canvas.ReleaseDC();
+
+	// 2. 새로운 좌표의 점과 원 그리기
+	for (int i = 0; i < 3; i++) DrawPoint(m_points[i]);
+
+	double cx, cy, r;
+	if (CalculateCircle(m_points[0], m_points[1], m_points[2], cx, cy, r)) {
+		DrawCustomCircle(cx, cy, r, m_nThickness);
+	}
+
+	// 3. 화면 갱신
+	Invalidate();
+	return 0;
+}
+
+void CMfcStartDlg::OnBnClickedBtnRandom()
+{
+	if (m_isThreadRunning) return; // 이미 실행 중이면 중복 방지
+
+	m_isThreadRunning = true;
+	AfxBeginThread(ThreadRandomMove, this); // 스레드 시작!
 }

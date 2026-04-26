@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#define WM_UPDATE_RANDOM (WM_USER + 100)
 
 
 // CMfcStartDlg 대화 상자
@@ -56,4 +57,6 @@ public:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnBnClickedBtnReset();
+	afx_msg LRESULT OnUpdateRandom(WPARAM wParam, LPARAM lParam);
+	afx_msg void OnBnClickedBtnRandom();
 };
