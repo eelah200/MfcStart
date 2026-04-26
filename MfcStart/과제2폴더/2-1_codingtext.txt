@@ -1,0 +1,15 @@
+#include <string>
+#include <vector>
+
+using namespace std;
+
+int solution(int n, int k) {
+    int answer = 0;
+    int meat = 12000;
+    int drink = 2000;
+    int service = n/10;
+
+    answer = (meat*n) + ((k-service) * drink);
+    
+    return answer;
+}
