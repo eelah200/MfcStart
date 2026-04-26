@@ -52,11 +52,11 @@ public:
 
 	CImage m_canvas; //원을 그리는 기본적 변수
 
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void DrawPoint(CPoint p);
-	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
-	afx_msg void OnBnClickedBtnReset();
-	afx_msg LRESULT OnUpdateRandom(WPARAM wParam, LPARAM lParam);
-	afx_msg void OnBnClickedBtnRandom();
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point); // 캔버스 내 포인트 지정&원그리기 함수
+	afx_msg void DrawPoint(CPoint p); // 3개 점 포인트 지정 함수 
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point); // 드래그 기능 함수_1 (지속적 업데이트)
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point); // 드래그 기능 함수_2 (종료)
+	afx_msg void OnBnClickedBtnReset(); // 초기화 기능 함수 
+	afx_msg LRESULT OnUpdateRandom(WPARAM wParam, LPARAM lParam); // 랜덤이동 기능 함수_1
+	afx_msg void OnBnClickedBtnRandom(); // 랜덤이동 기능 함수_2
 };

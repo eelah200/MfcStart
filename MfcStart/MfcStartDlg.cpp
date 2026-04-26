@@ -1,6 +1,5 @@
 ﻿
 // MfcStartDlg.cpp: 구현 파일
-//
 
 #include "pch.h"
 #include "framework.h"
@@ -11,7 +10,6 @@
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
-
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -126,8 +124,7 @@ BOOL CMfcStartDlg::OnInitDialog()
 		pCanvas->GetWindowRect(&rect);
 		ScreenToClient(&rect);
 
-		// 2. 실제 그림을 저장할 비트맵(종이) 생성 (중요!)
-		// m_hBitmap != 0 오류를 해결하는 핵심 줄입니다.
+		// 2. 실제 그림을 저장할 비트맵
 		m_canvas.Create(rect.Width(), rect.Height(), 24);
 
 		// 3. 종이를 깨끗하게 흰색으로 초기화
@@ -190,7 +187,7 @@ void CMfcStartDlg::OnPaint()
 				pCanvas->GetWindowRect(&rect);
 				ScreenToClient(&rect);
 
-				// 핵심: 메모리(m_canvas)를 화면(dc)의 해당 위치에 그립니다.
+				// 메모리(m_canvas)를 화면(dc)의 해당 위치에 그립니다.
 				m_canvas.Draw(dc.GetSafeHdc(), rect.left, rect.top);
 			}
 		}
@@ -209,7 +206,7 @@ void CMfcStartDlg::OnEnChangeEditEdge()
 {
 	// TODO:  RICHEDIT 컨트롤인 경우, 이 컨트롤은
 	// CDialogEx::OnInitDialog() 함수를 재지정 
-	//하고 마스크에 OR 연산하여 설정된 ENM_CHANGE 플래그를 지정하여 CRichEditCtrl().SetEventMask()를 호출하지 않으면
+	// 하고 마스크에 OR 연산하여 설정된 ENM_CHANGE 플래그를 지정하여 CRichEditCtrl().SetEventMask()를 호출하지 않으면
 	// ENM_CHANGE가 있으면 마스크에 ORed를 플래그합니다.
 
 	// TODO:  여기에 컨트롤 알림 처리기 코드를 추가합니다.
@@ -306,14 +303,12 @@ void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 		imgPoint.x = point.x - rect.left;
 		imgPoint.y = point.y - rect.top;
 
-		// --- 여기서부터 3단계 핵심 로직 시작 ---
-
 		if (m_clickCount < 3)
 		{
-			// [1] 점 좌표 저장
+			// 3-1. 점 좌표 저장
 			m_points[m_clickCount] = imgPoint;
 
-			// [2] 현재 찍힌 점의 순서에 맞춰서 글자 업데이트
+			// 3-2. 현재 찍힌 점의 순서에 맞춰서 글자 업데이트
 			CString str;
 			str.Format(_T("점%d(%d, %d)"), m_clickCount + 1, imgPoint.x, imgPoint.y);
 
@@ -321,13 +316,13 @@ void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 			else if (m_clickCount == 1) SetDlgItemText(IDC_POINT_2, str);
 			else if (m_clickCount == 2) SetDlgItemText(IDC_POINT_3, str);
 
-			// [3] 점 그리기
+			// 3-3. 점 그리기
 			DrawPoint(imgPoint);
 
-			// [4] 점 개수 증가 (이 위치가 제일 중요합니다!)
+			// 3-4. 점 개수 증가 (이 위치가 제일 중요합니다!)
 			m_clickCount++;
 
-			// [5] 방금 찍은 게 3번째 점이라면 바로 원 그리기
+			// 3-5. 방금 찍은 게 3번째 점이라면 바로 원 그리기
 			if (m_clickCount == 3) {
 				double cx, cy, r;
 				if (CalculateCircle(m_points[0], m_points[1], m_points[2], cx, cy, r)) {
@@ -341,13 +336,12 @@ void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 		}
 		else
 		{
-			// [6] 이미 점이 3개인 상태 -> 드래그할 점이 있는지 검사
+			// 3-6. 이미 점이 3개인 상태 -> 드래그할 점이 있는지 검사
 			for (int i = 0; i < 3; i++) {
 				double dx = imgPoint.x - m_points[i].x;
 				double dy = imgPoint.y - m_points[i].y;
 				double dist = sqrt(dx * dx + dy * dy);
 
-				// 마우스 클릭 위치가 점의 중심에서 15픽셀 이내라면 "잡았다!"
 				if (dist <= 15.0) {
 					m_dragIndex = i;
 					break;
@@ -364,7 +358,7 @@ void CMfcStartDlg::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CMfcStartDlg::DrawPoint(CPoint p)
 {
-	// 3-3. 클릭한 위치에 눈에 잘 띄게 검은색 정원 점 찍기 (피드백)
+	// 클릭한 위치에 눈에 잘 띄게 검은색 정원 점 찍기 (피드백)
 	int pointRadius = 7; // 점의 크기 조절
 	for (int y = -pointRadius; y <= pointRadius; y++) {
 		for (int x = -pointRadius; x <= pointRadius; x++) {
